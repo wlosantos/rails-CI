@@ -53,7 +53,6 @@ jobs:
           RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
           REDIS_URL: redis://localhost:6379
         run: |
-          bin/rails tailwindcss:build
           bin/rails db:create
           bin/rails db:schema:load
           bin/rails rspec spec --format documentation
