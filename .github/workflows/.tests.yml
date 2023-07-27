@@ -1,0 +1,66 @@
+name: CI
+on: [pull_request]
+
+jobs:
+  install-cache:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Commit
+        uses: actions/checkout@v3
+      - name: Install Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2.2
+          bundler-cache: true
+
+  test:
+    runs-on: ubuntu-latest
+    needs: install-cache
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:13
+        ports: ["5432:5432"]
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:6
+        ports:
+          - "6379:6379"
+
+    steps:
+      - name: Checkout Commit
+        uses: actions/checkout@v3
+      - name: Install Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2.2
+          bundler-cache: true
+      - name: Install system dependencies
+        run: |
+          sudo apt-get -y update
+      - name: Run tests
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/myapp_test
+          # RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+          REDIS_URL: redis://localhost:6379
+        run: |
+          bin/rails tailwindcss:build
+          bin/rails db:create
+          bin/rails db:schema:load
+          bin/rails rspec spec --format documentation
+          bin/rails bundle exec rubocop --parallel -A
+      - name:
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/myapp_test
+          # RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+        run: bundle exec rails db:reset
